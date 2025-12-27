@@ -4,12 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sloppy-json"
-version = "0.1.0"
+version = "0.1.1"
 description = "A forgiving JSON parser that recovers broken JSON from LLM outputs"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 keywords = ["json", "parser", "llm", "recovery", "forgiving"]
+authors = [
+    { name = "Cemrehan Cavdar", email = "cemrehancavdar@hotmail.com" },
+    { name = "Claude", email = "noreply@anthropic.com" },
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
