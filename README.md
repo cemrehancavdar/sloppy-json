@@ -90,6 +90,11 @@ options = detect_required_options(samples)
 - [Error Handling](docs/errors.md) - Exceptions and partial recovery
 - [Examples](docs/examples.md) - Common scenarios and recipes
 
+## Similar Projects
+
+- **[sloppy-xml-py](https://github.com/mitsuhiko/sloppy-xml-py)** - A sloppy XML parser by Armin Ronacher for handling malformed XML. The naming of this project was inspired by sloppy-xml-py.
+- **[json5](https://github.com/dpranke/pyjson5)** - A JSON extension that allows comments, trailing commas, and unquoted keys.
+
 ## License
 
 MIT
