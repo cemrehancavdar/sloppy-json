@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="sloppy-json" width="400">
+</p>
+
 # sloppy-json
 
 A forgiving JSON parser that recovers broken JSON from LLM outputs.
@@ -12,6 +16,16 @@ or with pip:
 
 ```bash
 pip install sloppy-json
+```
+
+## Quick Start
+
+```python
+from sloppy_json import parse_permissive
+
+# Handles almost any broken JSON
+result = parse_permissive("{'name': 'test', 'active': True,}")
+# Returns: '{"name": "test", "active": true}'
 ```
 
 ## Usage
@@ -39,14 +53,18 @@ result = parse("{'flag': True,}", opts)
 
 ## Features
 
-- **Quoting**: Unquoted keys, single-quoted strings
-- **Commas**: Trailing commas, missing commas
-- **Incomplete JSON**: Auto-close objects, arrays, strings
-- **Extra content**: Extract JSON from surrounding text or code blocks
-- **Python literals**: Convert `True`/`False`/`None` to JSON equivalents
-- **Special values**: Handle `undefined`, `NaN`, `Infinity`
-- **Comments**: JavaScript-style `//` and `/* */` comments
-- **Escape handling**: Handle unescaped newlines in strings
+| Feature | Example Input | Output |
+|---------|---------------|--------|
+| Single quotes | `{'key': 'value'}` | `{"key": "value"}` |
+| Unquoted keys | `{key: "value"}` | `{"key": "value"}` |
+| Trailing commas | `{"a": 1,}` | `{"a": 1}` |
+| Missing commas | `{"a": 1 "b": 2}` | `{"a": 1, "b": 2}` |
+| Python literals | `{"flag": True}` | `{"flag": true}` |
+| Truncated JSON | `{"key": "val` | `{"key": "val"}` |
+| Code blocks | `` ```json {"a":1}``` `` | `{"a": 1}` |
+| Comments | `{"a": 1} // comment` | `{"a": 1}` |
+| JS undefined | `{"a": undefined}` | `{"a": null}` |
+| NaN/Infinity | `{"a": NaN}` | `{"a": "NaN"}` |
 
 ## Auto-detection
 
@@ -62,6 +80,15 @@ options = detect_required_options(samples)
 # options.allow_unquoted_keys == True
 # options.convert_python_literals == True
 ```
+
+## Documentation
+
+- [Getting Started](docs/index.md) - Overview and quick start
+- [Options Reference](docs/options.md) - All `RecoveryOptions` explained
+- [Presets Guide](docs/presets.md) - When to use strict/lenient/permissive
+- [Auto-Detection](docs/detection.md) - Automatically detect required options
+- [Error Handling](docs/errors.md) - Exceptions and partial recovery
+- [Examples](docs/examples.md) - Common scenarios and recipes
 
 ## License
 
