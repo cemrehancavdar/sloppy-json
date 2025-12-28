@@ -5,7 +5,7 @@ sloppy-json can analyze sample JSON strings and automatically detect which recov
 ## Basic Usage
 
 ```python
-from sloppy_json import detect_required_options, parse
+from sloppy_json import parse, RecoveryOptions
 
 # Collect samples of broken JSON you've seen
 samples = [
@@ -15,7 +15,7 @@ samples = [
 ]
 
 # Detect minimum required options
-options = detect_required_options(samples)
+options = RecoveryOptions.detect_from(samples)
 
 # Now use those options
 result = parse(broken_json, options)
@@ -44,7 +44,7 @@ result = parse(broken_json, options)
 ## Example: LLM Response Analysis
 
 ```python
-from sloppy_json import detect_required_options, parse
+from sloppy_json import parse, RecoveryOptions
 
 # Collect samples from your LLM responses
 llm_responses = [
@@ -54,7 +54,7 @@ llm_responses = [
 ]
 
 # Analyze what options you need
-options = detect_required_options(llm_responses)
+options = RecoveryOptions.detect_from(llm_responses)
 
 print(f"Single quotes: {options.allow_single_quotes}")
 print(f"Trailing commas: {options.allow_trailing_commas}")
@@ -66,22 +66,20 @@ print(f"Text extraction: {options.extract_json_from_text}")
 result = parse(new_response, options)
 ```
 
-## Detected Options Object
+## Nice repr Output
 
-The function returns a `RecoveryOptions` object with detected options enabled:
+The detected options have a clean representation showing only non-default values:
 
 ```python
-options = detect_required_options(samples)
-
-# Access detected settings
-if options.allow_single_quotes:
-    print("Samples contain single-quoted strings")
-
-if options.auto_close_objects:
-    print("Samples have unclosed objects")
-
-if options.convert_python_literals:
-    print("Samples use Python True/False/None")
+>>> samples = ["{'key': 'value',}", "{name: True}"]
+>>> opts = RecoveryOptions.detect_from(samples)
+>>> opts
+RecoveryOptions(
+    allow_single_quotes=True,
+    allow_trailing_commas=True,
+    allow_unquoted_keys=True,
+    convert_python_literals=True
+)
 ```
 
 ## Combining with Manual Options
@@ -90,10 +88,10 @@ You can use detected options as a base and add more:
 
 ```python
 from dataclasses import replace
-from sloppy_json import detect_required_options
+from sloppy_json import RecoveryOptions
 
 # Detect from samples
-options = detect_required_options(samples)
+options = RecoveryOptions.detect_from(samples)
 
 # Add additional options
 options = replace(options, 
@@ -115,9 +113,9 @@ When integrating with a new LLM or data source:
 samples = collect_samples()
 
 # Analyze what options you need
-options = detect_required_options(samples)
+options = RecoveryOptions.detect_from(samples)
 
-# Save as your configuration
+# Print the recommended configuration
 print(f"Recommended options: {options}")
 ```
 
@@ -126,6 +124,8 @@ print(f"Recommended options: {options}")
 Adjust options based on observed patterns:
 
 ```python
+from sloppy_json import parse, RecoveryOptions, SloppyJSONDecodeError
+
 class AdaptiveParser:
     def __init__(self):
         self.samples = []
@@ -137,7 +137,7 @@ class AdaptiveParser:
         except SloppyJSONDecodeError:
             # Failed - add to samples and re-detect
             self.samples.append(text)
-            self.options = detect_required_options(self.samples)
+            self.options = RecoveryOptions.detect_from(self.samples)
             return parse(text, self.options)
 ```
 
@@ -146,12 +146,12 @@ class AdaptiveParser:
 Check if samples need recovery at all:
 
 ```python
-options = detect_required_options(samples)
+options = RecoveryOptions.detect_from(samples)
 
-if options == RecoveryOptions():
+if repr(options) == "RecoveryOptions()":
     print("All samples are valid JSON!")
 else:
-    print("Samples need recovery options")
+    print(f"Samples need recovery: {options}")
 ```
 
 ## Limitations
@@ -162,4 +162,4 @@ Detection is heuristic-based and may not catch all issues:
 - **False negatives**: Unusual patterns might not be detected
 - **Context-dependent**: Some issues only manifest during parsing
 
-For critical applications, consider using `permissive()` mode or manually configuring options based on known LLM behavior.
+For critical applications, consider using default permissive mode or manually configuring options based on known LLM behavior.

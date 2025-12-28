@@ -30,28 +30,32 @@ pip install sloppy-json
 ## Quick Start
 
 ```python
-from sloppy_json import parse_permissive
+from sloppy_json import parse
 
-# Handles almost any broken JSON
-result = parse_permissive("{'name': 'test', 'active': True,}")
+# Handles almost any broken JSON (permissive by default)
+result = parse("{'name': 'test', 'active': True,}")
 # Returns: '{"name": "test", "active": true}'
 ```
 
 ## Basic Usage
 
-### Convenience Functions
+### Default Permissive Parsing
 
 ```python
-from sloppy_json import parse_strict, parse_lenient, parse_permissive
+from sloppy_json import parse
+
+# Default: maximum recovery (permissive mode)
+parse("{key: 'value'")  # truncated, unquoted key, single quotes
+# Returns: '{"key": "value"}'
+```
+
+### Strict Parsing
+
+```python
+from sloppy_json import parse, RecoveryOptions
 
 # Strict: standard JSON only (like json.loads)
-parse_strict('{"key": "value"}')
-
-# Lenient: common LLM issues (quotes, trailing commas, Python literals)
-parse_lenient("{'key': True,}")
-
-# Permissive: maximum recovery (all options enabled)
-parse_permissive("{key: 'value'")  # truncated, unquoted key, single quotes
+parse('{"key": "value"}', RecoveryOptions(strict=True))
 ```
 
 ### Custom Options
@@ -62,9 +66,8 @@ from sloppy_json import parse, RecoveryOptions
 opts = RecoveryOptions(
     allow_single_quotes=True,
     allow_trailing_commas=True,
-    convert_python_literals=True,
 )
-result = parse("{'flag': True,}", opts)
+result = parse("{'flag': true,}", opts)
 ```
 
 ## Features
@@ -86,25 +89,15 @@ result = parse("{'flag': True,}", opts)
 
 ### Functions
 
-#### `parse(text: str, options: RecoveryOptions = None) -> str`
+#### `parse(text: str, options: RecoveryOptions | None = None) -> str`
 
-Parse JSON with specified recovery options. Returns normalized JSON string.
+Parse JSON with specified recovery options.
 
-#### `parse_strict(text: str) -> str`
+- `options=None` (default): Permissive mode - all recovery enabled
+- `options=RecoveryOptions(strict=True)`: Strict JSON parsing
+- `options=RecoveryOptions(...)`: Custom options
 
-Parse standard JSON only. Equivalent to `parse(text, RecoveryOptions.strict())`.
-
-#### `parse_lenient(text: str) -> str`
-
-Parse with common LLM issue recovery. Equivalent to `parse(text, RecoveryOptions.lenient())`.
-
-#### `parse_permissive(text: str) -> str`
-
-Parse with maximum recovery. Equivalent to `parse(text, RecoveryOptions.permissive())`.
-
-#### `detect_required_options(samples: list[str]) -> RecoveryOptions`
-
-Analyze sample JSON strings and return minimum required options to parse them.
+Returns normalized JSON string.
 
 ### Classes
 
@@ -112,15 +105,28 @@ Analyze sample JSON strings and return minimum required options to parse them.
 
 Configuration dataclass for recovery behavior. See [Options Reference](options.md).
 
+```python
+from sloppy_json import RecoveryOptions
+
+# Strict mode
+RecoveryOptions(strict=True)
+
+# Custom options
+RecoveryOptions(allow_single_quotes=True, allow_trailing_commas=True)
+
+# Auto-detect from samples
+RecoveryOptions.detect_from(["{'key': 'value',}"])
+```
+
 #### `SloppyJSONDecodeError`
 
 Exception raised when parsing fails. Includes position information.
 
 ```python
-from sloppy_json import parse_strict, SloppyJSONDecodeError
+from sloppy_json import parse, RecoveryOptions, SloppyJSONDecodeError
 
 try:
-    parse_strict('{invalid}')
+    parse('{invalid}', RecoveryOptions(strict=True))
 except SloppyJSONDecodeError as e:
     print(e.message)   # "Expected string for key"
     print(e.line)      # 1
@@ -128,14 +134,9 @@ except SloppyJSONDecodeError as e:
     print(e.position)  # 1
 ```
 
-#### `ErrorInfo`
-
-Dataclass containing error details, used with `partial_recovery` mode.
-
 ## Documentation
 
 - [Options Reference](options.md) - All `RecoveryOptions` explained
-- [Presets Guide](presets.md) - When to use strict/lenient/permissive
 - [Auto-Detection](detection.md) - Automatically detect required options
 - [Error Handling](errors.md) - Exceptions and partial recovery
 - [Examples](examples.md) - Common scenarios and recipes

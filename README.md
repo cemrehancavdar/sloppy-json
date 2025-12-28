@@ -21,34 +21,30 @@ pip install sloppy-json
 ## Quick Start
 
 ```python
-from sloppy_json import parse_permissive
+from sloppy_json import parse
 
-# Handles almost any broken JSON
-result = parse_permissive("{'name': 'test', 'active': True,}")
+# Handles almost any broken JSON (permissive by default)
+result = parse("{'name': 'test', 'active': True,}")
 # Returns: '{"name": "test", "active": true}'
 ```
 
 ## Usage
 
 ```python
-from sloppy_json import parse, parse_lenient, parse_permissive, RecoveryOptions
+from sloppy_json import parse, RecoveryOptions
+
+# Default: permissive parsing (maximum recovery)
+result = parse("Here is the JSON: {name: 'test'")  # handles everything
 
 # Strict parsing (standard JSON only)
-result = parse('{"key": "value"}')
-
-# Lenient parsing (common LLM issues)
-result = parse_lenient("{'key': 'value',}")  # single quotes + trailing comma
-
-# Permissive parsing (maximum recovery)
-result = parse_permissive("Here is the JSON: {name: 'test'")  # everything
+result = parse('{"key": "value"}', RecoveryOptions(strict=True))
 
 # Custom options
 opts = RecoveryOptions(
     allow_single_quotes=True,
     allow_trailing_commas=True,
-    convert_python_literals=True,
 )
-result = parse("{'flag': True,}", opts)
+result = parse("{'key': 'value',}", opts)
 ```
 
 ## Features
@@ -68,24 +64,25 @@ result = parse("{'flag': True,}", opts)
 
 ## Auto-detection
 
-Automatically detect what options are needed:
+Automatically detect what options are needed from sample data:
 
 ```python
-from sloppy_json import detect_required_options
+from sloppy_json import parse, RecoveryOptions
 
 samples = ["{'key': 'value',}", "{name: True}"]
-options = detect_required_options(samples)
+options = RecoveryOptions.detect_from(samples)
 # options.allow_single_quotes == True
 # options.allow_trailing_commas == True
 # options.allow_unquoted_keys == True
 # options.convert_python_literals == True
+
+result = parse(new_json, options)
 ```
 
 ## Documentation
 
 - [Getting Started](docs/index.md) - Overview and quick start
 - [Options Reference](docs/options.md) - All `RecoveryOptions` explained
-- [Presets Guide](docs/presets.md) - When to use strict/lenient/permissive
 - [Auto-Detection](docs/detection.md) - Automatically detect required options
 - [Error Handling](docs/errors.md) - Exceptions and partial recovery
 - [Examples](docs/examples.md) - Common scenarios and recipes

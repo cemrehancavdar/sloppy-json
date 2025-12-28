@@ -7,12 +7,12 @@ Common scenarios and recipes for using sloppy-json.
 ### Basic LLM Output
 
 ```python
-from sloppy_json import parse_permissive
+from sloppy_json import parse
 import json
 
 def extract_json_from_llm(response: str) -> dict:
     """Extract and parse JSON from LLM response."""
-    json_str = parse_permissive(response)
+    json_str = parse(response)  # permissive by default
     return json.loads(json_str)
 
 # Example responses
@@ -37,12 +37,12 @@ data = extract_json_from_llm(response)
 LLMs often hit token limits and truncate output:
 
 ```python
-from sloppy_json import parse_permissive
+from sloppy_json import parse
 import json
 
 truncated = '{"users": [{"name": "Alice", "email": "alice@example.com"}, {"name": "Bob", "email": "bob@'
 
-result = parse_permissive(truncated)
+result = parse(truncated)
 # '{"users": [{"name": "Alice", "email": "alice@example.com"}, {"name": "Bob", "email": "bob@"}]}'
 
 data = json.loads(result)
@@ -88,12 +88,17 @@ for chunk in chunks:
 ### Parsing Tool Arguments
 
 ```python
-from sloppy_json import parse_lenient
+from sloppy_json import parse, RecoveryOptions
 import json
 
 def parse_tool_args(raw_args: str) -> dict:
     """Parse tool call arguments from LLM."""
-    json_str = parse_lenient(raw_args)
+    opts = RecoveryOptions(
+        allow_single_quotes=True,
+        allow_trailing_commas=True,
+        convert_python_literals=True,
+    )
+    json_str = parse(raw_args, opts)
     return json.loads(json_str)
 
 # LLM might return Python-style
@@ -105,7 +110,7 @@ args = parse_tool_args(raw)
 ### Structured Output Extraction
 
 ```python
-from sloppy_json import parse_permissive
+from sloppy_json import parse
 import json
 from dataclasses import dataclass
 
@@ -116,7 +121,7 @@ class ExtractedEntity:
     confidence: float
 
 def extract_entities(llm_response: str) -> list[ExtractedEntity]:
-    json_str = parse_permissive(llm_response)
+    json_str = parse(llm_response)
     data = json.loads(json_str)
     
     return [
@@ -178,12 +183,12 @@ config = load_config("config.json")
 ### Cleaning Scraped JSON
 
 ```python
-from sloppy_json import parse_permissive
+from sloppy_json import parse
 import json
 
 def clean_json(dirty_json: str) -> str:
     """Clean and normalize messy JSON."""
-    return parse_permissive(dirty_json)
+    return parse(dirty_json)  # permissive by default
 
 # Scraped data with various issues
 dirty = """
@@ -204,7 +209,7 @@ clean = clean_json(dirty)
 ### Batch Processing
 
 ```python
-from sloppy_json import parse_permissive, SloppyJSONDecodeError
+from sloppy_json import parse, SloppyJSONDecodeError
 import json
 
 def process_json_batch(items: list[str]) -> list[dict]:
@@ -213,7 +218,7 @@ def process_json_batch(items: list[str]) -> list[dict]:
     
     for i, item in enumerate(items):
         try:
-            json_str = parse_permissive(item)
+            json_str = parse(item)
             results.append(json.loads(json_str))
         except SloppyJSONDecodeError as e:
             print(f"Item {i} failed: {e.message}")
@@ -229,20 +234,25 @@ def process_json_batch(items: list[str]) -> list[dict]:
 ### Wrapper for API Clients
 
 ```python
-from sloppy_json import parse_lenient
+from sloppy_json import parse, RecoveryOptions
 import json
 import httpx
 
 class RobustAPIClient:
     def __init__(self, base_url: str):
         self.client = httpx.Client(base_url=base_url)
+        self.opts = RecoveryOptions(
+            allow_single_quotes=True,
+            allow_trailing_commas=True,
+            convert_python_literals=True,
+        )
     
     def get_json(self, path: str) -> dict:
         response = self.client.get(path)
         response.raise_for_status()
         
         # Handle potentially broken JSON
-        json_str = parse_lenient(response.text)
+        json_str = parse(response.text, self.opts)
         return json.loads(json_str)
 
 # Usage
@@ -261,9 +271,10 @@ from sloppy_json import parse, RecoveryOptions
 
 def parse_verbose(text: str) -> str:
     """Parse with detailed error reporting."""
-    opts = RecoveryOptions.permissive()
     opts = RecoveryOptions(
-        **{k: v for k, v in opts.__dict__.items()},
+        allow_single_quotes=True,
+        allow_trailing_commas=True,
+        convert_python_literals=True,
         partial_recovery=True,
     )
     
@@ -284,69 +295,14 @@ result = parse_verbose(text)
 #   Line 1, Col 37: Expected value
 ```
 
-### Comparing Parsing Modes
-
-```python
-from sloppy_json import parse_strict, parse_lenient, parse_permissive, SloppyJSONDecodeError
-
-def analyze_json(text: str):
-    """Show which parsing mode is needed."""
-    modes = [
-        ("strict", parse_strict),
-        ("lenient", parse_lenient),
-        ("permissive", parse_permissive),
-    ]
-    
-    for name, parser in modes:
-        try:
-            result = parser(text)
-            print(f"{name}: OK")
-            return name, result
-        except SloppyJSONDecodeError as e:
-            print(f"{name}: FAILED - {e.message}")
-    
-    return None, None
-
-# Test
-text = "{name: 'test', active: True,}"
-mode, result = analyze_json(text)
-# strict: FAILED - Expected string for key
-# lenient: FAILED - Expected string for key  
-# permissive: OK
-```
-
 ---
 
 ## Integration Patterns
 
-### Fallback Chain
-
-```python
-from sloppy_json import parse_strict, parse_lenient, parse_permissive, SloppyJSONDecodeError
-import json
-
-def robust_parse(text: str) -> dict:
-    """Try progressively more lenient parsing."""
-    parsers = [
-        ("strict", parse_strict),
-        ("lenient", parse_lenient),
-        ("permissive", parse_permissive),
-    ]
-    
-    for name, parser in parsers:
-        try:
-            json_str = parser(text)
-            return json.loads(json_str)
-        except SloppyJSONDecodeError:
-            continue
-    
-    raise ValueError("Could not parse JSON with any mode")
-```
-
 ### Caching Detected Options
 
 ```python
-from sloppy_json import detect_required_options, parse, RecoveryOptions
+from sloppy_json import parse, RecoveryOptions
 
 class SmartParser:
     def __init__(self):
@@ -362,9 +318,9 @@ class SmartParser:
     def options(self) -> RecoveryOptions:
         if self._options is None:
             if self._samples:
-                self._options = detect_required_options(self._samples)
+                self._options = RecoveryOptions.detect_from(self._samples)
             else:
-                self._options = RecoveryOptions.lenient()
+                self._options = RecoveryOptions()
         return self._options
     
     def parse(self, text: str) -> str:

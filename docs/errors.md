@@ -22,10 +22,10 @@ except SloppyJSONError as e:
 Raised when JSON decoding fails. Includes position information.
 
 ```python
-from sloppy_json import parse_strict, SloppyJSONDecodeError
+from sloppy_json import parse, RecoveryOptions, SloppyJSONDecodeError
 
 try:
-    parse_strict('{invalid json}')
+    parse('{invalid json}', RecoveryOptions(strict=True))
 except SloppyJSONDecodeError as e:
     print(e.message)    # "Expected string for key"
     print(e.line)       # 1
@@ -41,37 +41,6 @@ except SloppyJSONDecodeError as e:
 | `line` | `int` | Line number (1-based) |
 | `column` | `int` | Column number (1-based) |
 | `position` | `int` | Character offset (0-based) |
-
-#### Methods
-
-```python
-# Convert to ErrorInfo dataclass
-error_info = e.to_error_info()
-```
-
----
-
-## ErrorInfo
-
-Dataclass containing error details, used with partial recovery mode.
-
-```python
-from sloppy_json import ErrorInfo
-
-@dataclass
-class ErrorInfo:
-    message: str
-    position: int
-    line: int
-    column: int
-```
-
-String representation:
-
-```python
-error = ErrorInfo("Expected value", position=15, line=1, column=16)
-print(str(error))  # "Expected value at line 1, column 16"
-```
 
 ---
 
@@ -122,22 +91,6 @@ print(result)  # '{"a": null, "b": null, "c": null}'
 print(len(errors))  # 3 errors collected
 ```
 
-### Error Reporting
-
-```python
-opts = RecoveryOptions(partial_recovery=True)
-result, errors = parse(broken_json, opts)
-
-if errors:
-    print(f"Parsed with {len(errors)} error(s):")
-    for error in errors:
-        print(f"  - {error}")
-else:
-    print("Parsed successfully")
-
-print(f"Result: {result}")
-```
-
 ---
 
 ## Common Error Messages
@@ -160,14 +113,16 @@ print(f"Result: {result}")
 ### 1. Use Appropriate Mode
 
 ```python
+from sloppy_json import parse, RecoveryOptions, SloppyJSONDecodeError
+
 # For validation: strict mode, catch errors
 try:
-    result = parse_strict(text)
+    result = parse(text, RecoveryOptions(strict=True))
 except SloppyJSONDecodeError as e:
     log_error(f"Invalid JSON at line {e.line}: {e.message}")
 
-# For recovery: permissive mode
-result = parse_permissive(text)
+# For recovery: default permissive mode
+result = parse(text)
 
 # For debugging: partial recovery
 result, errors = parse(text, RecoveryOptions(partial_recovery=True))
@@ -176,30 +131,14 @@ if errors:
         log_warning(f"Recovered from: {e}")
 ```
 
-### 2. Log Errors for Monitoring
-
-```python
-def parse_with_logging(text):
-    opts = RecoveryOptions.permissive()
-    opts = replace(opts, partial_recovery=True)
-    
-    result, errors = parse(text, opts)
-    
-    if errors:
-        logger.warning(f"JSON recovery: {len(errors)} issues")
-        for error in errors:
-            logger.debug(f"  {error}")
-    
-    return result
-```
-
-### 3. Validate After Recovery
+### 2. Validate After Recovery
 
 ```python
 import json
+from sloppy_json import parse
 
 def safe_parse(text):
-    result = parse_permissive(text)
+    result = parse(text)  # permissive by default
     
     # Verify it's valid JSON
     try:
@@ -216,14 +155,14 @@ def safe_parse(text):
 For type checkers, the return type depends on `partial_recovery`:
 
 ```python
-from sloppy_json import parse, RecoveryOptions, ErrorInfo
+from sloppy_json import parse, RecoveryOptions
 
-# Without partial_recovery
+# Without partial_recovery (default) - returns str
 def process(text: str) -> str:
-    return parse(text, RecoveryOptions())
+    return parse(text)
 
-# With partial_recovery  
-def process_safe(text: str) -> tuple[str, list[ErrorInfo]]:
+# With partial_recovery - returns tuple
+def process_safe(text: str) -> tuple[str, list]:
     opts = RecoveryOptions(partial_recovery=True)
     return parse(text, opts)
 ```

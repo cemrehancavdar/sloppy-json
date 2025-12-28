@@ -9,6 +9,9 @@ from sloppy_json import RecoveryOptions
 
 # All options with defaults
 opts = RecoveryOptions(
+    # Strict mode
+    strict=False,  # When True, all other options are ignored
+    
     # Quoting
     allow_unquoted_keys=False,
     allow_single_quotes=False,
@@ -39,6 +42,52 @@ opts = RecoveryOptions(
     escape_newlines_in_strings=False,
     partial_recovery=False,
 )
+```
+
+## Usage Modes
+
+### Default Permissive Mode
+
+When you call `parse()` without options, all recovery is enabled:
+
+```python
+from sloppy_json import parse
+
+# All recovery options enabled
+result = parse("{'key': 'value',}")
+```
+
+### Strict Mode
+
+Use `strict=True` to parse standard JSON only:
+
+```python
+from sloppy_json import parse, RecoveryOptions
+
+result = parse('{"key": "value"}', RecoveryOptions(strict=True))
+```
+
+### Custom Options
+
+Enable only specific options:
+
+```python
+opts = RecoveryOptions(
+    allow_single_quotes=True,
+    allow_trailing_commas=True,
+)
+result = parse("{'key': 'value',}", opts)
+```
+
+### Auto-detected Options
+
+Detect required options from samples:
+
+```python
+samples = ["{'key': 'value',}", "{name: True}"]
+opts = RecoveryOptions.detect_from(samples)
+result = parse(new_json, opts)
+```
 ```
 
 ---

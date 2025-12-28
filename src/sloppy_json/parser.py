@@ -809,6 +809,29 @@ class _Object:
         self.items.append((key, value))
 
 
+def _permissive_options() -> RecoveryOptions:
+    """Return options for maximum recovery (all options enabled)."""
+    return RecoveryOptions(
+        allow_unquoted_keys=True,
+        allow_single_quotes=True,
+        allow_unquoted_identifiers=True,
+        allow_trailing_commas=True,
+        allow_missing_commas=True,
+        auto_close_objects=True,
+        auto_close_arrays=True,
+        auto_close_strings=True,
+        extract_json_from_text=True,
+        extract_from_code_blocks=True,
+        extract_from_triple_quotes=True,
+        convert_python_literals=True,
+        handle_undefined="null",
+        handle_nan="string",
+        handle_infinity="string",
+        allow_comments=True,
+        escape_newlines_in_strings=True,
+    )
+
+
 def parse(
     json_string: str,
     options: RecoveryOptions | None = None,
@@ -817,7 +840,10 @@ def parse(
 
     Args:
         json_string: The JSON string to parse.
-        options: Recovery options. If None, uses strict parsing.
+        options: Recovery options.
+            - None (default): Permissive mode - all recovery enabled
+            - RecoveryOptions(strict=True): Strict JSON parsing
+            - RecoveryOptions(...): Custom options
 
     Returns:
         The parsed JSON as a normalized string.
@@ -825,70 +851,26 @@ def parse(
 
     Raises:
         SloppyJSONDecodeError: If parsing fails and partial_recovery is False.
+
+    Examples:
+        # Default permissive parsing
+        >>> parse("{'name': 'test', active: True,}")
+        '{"name": "test", "active": true}'
+
+        # Strict JSON parsing
+        >>> parse('{"name": "test"}', RecoveryOptions(strict=True))
+        '{"name": "test"}'
+
+        # Custom options
+        >>> parse("{'name': 'test'}", RecoveryOptions(allow_single_quotes=True))
+        '{"name": "test"}'
     """
     if options is None:
-        options = RecoveryOptions()
+        # Default: permissive mode
+        options = _permissive_options()
+    elif options.strict:
+        # Strict mode: ignore all other flags
+        options = RecoveryOptions(strict=True)
 
     parser = Parser(json_string, options)
     return parser.parse()
-
-
-def parse_strict(json_string: str) -> str:
-    """Parse JSON in strict mode (no recovery).
-
-    Equivalent to parse(json_string, RecoveryOptions.strict()).
-
-    Args:
-        json_string: The JSON string to parse.
-
-    Returns:
-        The parsed JSON as a normalized string.
-
-    Raises:
-        SloppyJSONDecodeError: If parsing fails.
-    """
-    result = parse(json_string, RecoveryOptions.strict())
-    if isinstance(result, tuple):
-        return result[0]
-    return result
-
-
-def parse_lenient(json_string: str) -> str:
-    """Parse JSON in lenient mode (common LLM issues).
-
-    Handles: single quotes, trailing commas, Python literals,
-    code blocks, triple quotes, and comments.
-
-    Args:
-        json_string: The JSON string to parse.
-
-    Returns:
-        The parsed JSON as a normalized string.
-
-    Raises:
-        SloppyJSONDecodeError: If parsing fails.
-    """
-    result = parse(json_string, RecoveryOptions.lenient())
-    if isinstance(result, tuple):
-        return result[0]
-    return result
-
-
-def parse_permissive(json_string: str) -> str:
-    """Parse JSON in permissive mode (maximum recovery).
-
-    All recovery options are enabled.
-
-    Args:
-        json_string: The JSON string to parse.
-
-    Returns:
-        The parsed JSON as a normalized string.
-
-    Raises:
-        SloppyJSONDecodeError: If parsing fails.
-    """
-    result = parse(json_string, RecoveryOptions.permissive())
-    if isinstance(result, tuple):
-        return result[0]
-    return result

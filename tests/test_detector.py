@@ -1,6 +1,11 @@
 """Tests for auto-detection of required options."""
 
-from sloppy_json import detect_required_options
+from sloppy_json import RecoveryOptions
+
+
+# Helper alias for cleaner test code
+def detect_required_options(samples: list[str]) -> RecoveryOptions:
+    return RecoveryOptions.detect_from(samples)
 
 
 class TestDetectUnquotedKeys:

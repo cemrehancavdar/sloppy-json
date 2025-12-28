@@ -2,7 +2,7 @@
 
 import pytest
 
-from sloppy_json import RecoveryOptions, SloppyJSONDecodeError, parse, parse_permissive
+from sloppy_json import RecoveryOptions, SloppyJSONDecodeError, parse
 
 
 class TestRealWorldLLMOutputs:
@@ -289,10 +289,10 @@ class TestEdgeCases:
 
 
 class TestPermissiveMode:
-    """Integration tests for parse_permissive."""
+    """Integration tests for parse() default permissive mode."""
 
     def test_handles_everything(self):
-        """Test that permissive mode handles many issues at once."""
+        """Test that default permissive mode handles many issues at once."""
         input_json = """Here is the data:
 ```json
 {
@@ -304,7 +304,7 @@ class TestPermissiveMode:
     created: undefined,
     score: NaN,
 """
-        result = parse_permissive(input_json)
+        result = parse(input_json)
         assert '"name": "Test"' in result
         assert '"count": 42' in result
         assert '"active": true' in result
@@ -312,7 +312,7 @@ class TestPermissiveMode:
     def test_worst_case_json(self):
         """Test extremely malformed JSON."""
         input_json = "Sure here it is {name: 'test' value: True items: [1 2 3"
-        result = parse_permissive(input_json)
+        result = parse(input_json)
         assert '"name": "test"' in result
         assert '"value": true' in result
 
